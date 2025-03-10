@@ -25,14 +25,17 @@ echo "Obtenez une clé d'authentification depuis la console Tailscale:"
 echo "https://login.tailscale.com/admin/settings/keys"
 read -p "Entrez la clé d'authentification: " AUTHKEY
 
-# Isoler l'espace de noms
+# 1. Créer et configurer le namespace pour Tailscale
 ./isolate-tailscale.sh $NS_NAME $NEXT_INDEX
 
-# Configurer WireGuard
+# 2. Configurer WireGuard (dans l'espace global)
 ./setup-wireguard.sh $ESP_NAME $ESP_PUBKEY $ESP_IP
 
-# Démarrer Tailscale dans l'espace de noms
-./run-tailscale-namespace.sh $NS_NAME $ESP_IP "$ESP_NAME" "$AUTHKEY"
+# 3. Démarrer Tailscale dans le namespace (sans advertise-routes)
+./run-tailscale-namespace.sh $NS_NAME "$ESP_NAME" "$AUTHKEY"
+
+# 4. Configurer le routage entre WireGuard et le namespace Tailscale
+./setup-internal-routing.sh $NS_NAME $ESP_IP
 
 echo "----------------------------------------"
 echo "Configuration terminée pour $ESP_NAME"

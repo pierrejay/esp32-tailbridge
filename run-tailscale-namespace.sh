@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# Usage: ./run-tailscale-namespace.sh <namespace-name> <esp-address> <hostname> <authkey>
+# Usage: ./run-tailscale-namespace.sh <namespace-name> <hostname> <authkey>
 
 NS_NAME=$1
-ESP_ADDRESS=$2
-HOSTNAME=$3
-AUTHKEY=$4
+# ESP_ADDRESS=$2  # On commente cette ligne car on n'en a plus besoin
+HOSTNAME=$2       # Était $3 avant
+AUTHKEY=$3        # Était $4 avant
 
 # Vérifications
-if [ -z "$NS_NAME" ] || [ -z "$ESP_ADDRESS" ] || [ -z "$HOSTNAME" ] || [ -z "$AUTHKEY" ]; then
-  echo "Usage: $0 <namespace-name> <esp-address> <hostname> <authkey>"
+if [ -z "$NS_NAME" ] || [ -z "$HOSTNAME" ] || [ -z "$AUTHKEY" ]; then
+  echo "Usage: $0 <namespace-name> <hostname> <authkey>"
   exit 1
 fi
 
@@ -30,7 +30,7 @@ ip netns exec $NS_NAME tailscale \
   --socket=/var/run/tailscale-$NS_NAME.sock up \
   --authkey="$AUTHKEY" \
   --hostname="$HOSTNAME" \
-  --advertise-routes="$ESP_ADDRESS/32" \
+  # --advertise-routes="$ESP_ADDRESS/32" \  # On commente cette ligne
   --accept-routes
 
 echo "Tailscale démarré dans l'espace de noms $NS_NAME"

@@ -32,10 +32,10 @@ ip netns exec $NS_NAME ip route add default via 10.100.$INDEX.1
 sysctl -w net.ipv4.ip_forward=1
 
 # NAT et règles de firewall pour l'accès Internet
-# IMPORTANT: Utilisez votre interface Internet réelle (ens3 dans votre cas)
-iptables -t nat -A POSTROUTING -s 10.100.$INDEX.0/24 -o ens3 -j MASQUERADE
-iptables -A FORWARD -i veth-host-$NS_NAME -o ens3 -j ACCEPT
-iptables -A FORWARD -i ens3 -o veth-host-$NS_NAME -m state --state RELATED,ESTABLISHED -j ACCEPT
+# IMPORTANT: Ces règles sont maintenant commentées car nous utiliserons Tailscale comme exit node
+# iptables -t nat -A POSTROUTING -s 10.100.$INDEX.0/24 -o ens3 -j MASQUERADE
+# iptables -A FORWARD -i veth-host-$NS_NAME -o ens3 -j ACCEPT
+# iptables -A FORWARD -i ens3 -o veth-host-$NS_NAME -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 # Copier les binaires Tailscale dans un emplacement spécifique pour l'isolation
 mkdir -p /var/lib/tailscale-$NS_NAME
