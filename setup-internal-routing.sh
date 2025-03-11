@@ -34,3 +34,12 @@ ip netns exec $NS_NAME iptables -A FORWARD -i $VETH_NS -o tailscale0 -j ACCEPT
 ip netns exec $NS_NAME iptables -A FORWARD -i tailscale0 -o $VETH_NS -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 echo "Configuration du routage interne terminée pour $NS_NAME" 
+
+# MODIFICATION DE LA CONFIGURATION POUR QUE CA MARCHE SUR ORACLE VM
+# sudo iptables -D INPUT -j REJECT --reject-with icmp-host-prohibited
+# sudo iptables -A INPUT -p udp --dport 51820 -j ACCEPT
+# sudo iptables -A INPUT -j REJECT --reject-with icmp-host-prohibited
+
+# LIEN DIRECT ESP <-> wg0
+# sudo ip route del 10.6.0.3
+# sudo ip route add 10.6.0.3/32 dev wg0
