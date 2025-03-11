@@ -30,10 +30,13 @@ NEXT_INDEX=$((NEXT_INDEX + 1))
 ESP_IP="10.6.0.$((NEXT_INDEX + 1))"
 NS_NAME="esp$NEXT_INDEX"
 
+# Obtenir le vrai home directory de l'utilisateur qui a lancé sudo
+REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
+
 # Générer les clés WireGuard pour l'ESP32
-mkdir -p ~/esp-keys/$ESP_NAME
-wg genkey | tee ~/esp-keys/$ESP_NAME/private.key | wg pubkey > ~/esp-keys/$ESP_NAME/public.key
-ESP_PUBKEY=$(cat ~/esp-keys/$ESP_NAME/public.key)
+mkdir -p "$REAL_HOME/esp-keys/$ESP_NAME"
+wg genkey | tee "$REAL_HOME/esp-keys/$ESP_NAME/private.key" | wg pubkey > "$REAL_HOME/esp-keys/$ESP_NAME/public.key"
+ESP_PUBKEY=$(cat "$REAL_HOME/esp-keys/$ESP_NAME/public.key")
 
 # Obtenir une clé d'authentification Tailscale
 echo "Obtenez une clé d'authentification depuis la console Tailscale:"
@@ -71,7 +74,7 @@ echo "Configuration WireGuard pour ESP32:"
 echo "----------------------------------------"
 cat << EOF
 [Interface]
-PrivateKey = $(cat ~/esp-keys/$ESP_NAME/private.key)
+PrivateKey = $(cat "$REAL_HOME/esp-keys/$ESP_NAME/private.key")
 Address = $ESP_IP/24
 DNS = 1.1.1.1
 
