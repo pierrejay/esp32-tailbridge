@@ -45,30 +45,17 @@ ip netns exec $NS_NAME ip route add default via 10.100.$INDEX.1
 # Activer le transfert IP
 sysctl -w net.ipv4.ip_forward=1
 
-# Trouver l'index de la règle REJECT
-REJECT_LINE=$(iptables -L FORWARD --line-numbers | grep "REJECT.*icmp-host-prohibited" | awk '{print $1}')
+# Configuration du forwarding et NAT
+echo "Configuration du forwarding et NAT..."
 
-# Ajouter nos règles juste avant la règle REJECT
-if [ -n "$REJECT_LINE" ]; then
-    echo "Ajout des règles de forwarding avant la règle REJECT (ligne $REJECT_LINE)"
-    iptables -I FORWARD $REJECT_LINE -i "veth-host-$NS_NAME" -o "$DEFAULT_IF" -j ACCEPT
-    iptables -I FORWARD $REJECT_LINE -i "$DEFAULT_IF" -o "veth-host-$NS_NAME" -m state --state RELATED,ESTABLISHED -j ACCEPT
-else
-    echo "Règle REJECT non trouvée, ajout des règles à la fin"
-    iptables -A FORWARD -i "veth-host-$NS_NAME" -o "$DEFAULT_IF" -j ACCEPT
-    iptables -A FORWARD -i "$DEFAULT_IF" -o "veth-host-$NS_NAME" -m state --state RELATED,ESTABLISHED -j ACCEPT
-fi
+# 1. Autoriser tout le trafic sortant du namespace
+iptables -I FORWARD 1 -s "10.100.$INDEX.0/24" -j ACCEPT
 
-# NAT pour permettre l'accès Internet depuis le namespace
-echo "Configuration du NAT avec interface de sortie $DEFAULT_IF"
+# 2. Autoriser le trafic de retour établi
+iptables -I FORWARD 2 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+
+# 3. NAT pour l'accès Internet
 iptables -t nat -A POSTROUTING -s "10.100.$INDEX.0/24" -o "$DEFAULT_IF" -j MASQUERADE
-
-# Afficher les règles de firewall actuelles
-echo "Règles de firewall actuelles:"
-echo "1. Table NAT:"
-iptables -t nat -L -n -v
-echo "2. Table FILTER:"
-iptables -L -n -v
 
 # Vérifications
 echo "Vérification de la configuration..."
@@ -78,14 +65,13 @@ ip netns exec $NS_NAME ip addr show
 echo "2. Route par défaut dans le namespace:"
 ip netns exec $NS_NAME ip route show
 
-echo "3. Règles NAT:"
-iptables -t nat -L -n -v | grep 10.100.$INDEX
-
-echo "4. Test de ping vers la passerelle:"
+echo "3. Test de connectivité:"
+echo "   a. Ping vers la passerelle:"
 ip netns exec $NS_NAME ping -c 1 10.100.$INDEX.1
-
-echo "5. Test de ping vers 8.8.8.8:"
+echo "   b. Ping vers 8.8.8.8:"
 ip netns exec $NS_NAME ping -c 1 8.8.8.8
+echo "   c. Test DNS:"
+ip netns exec $NS_NAME nslookup google.com
 
 # Copier les binaires Tailscale dans un emplacement spécifique pour l'isolation
 mkdir -p /var/lib/tailscale-$NS_NAME

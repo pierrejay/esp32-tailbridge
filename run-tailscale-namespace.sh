@@ -30,7 +30,7 @@ ip netns exec $NS_NAME tailscale \
   --socket=/var/run/tailscale-$NS_NAME.sock up \
   --authkey="$AUTHKEY" \
   --hostname="$HOSTNAME" \
-  # --advertise-routes="$ESP_ADDRESS/32" \  # On commente cette ligne
-  --accept-routes
+  --accept-routes=true
+# --advertise-routes="$ESP_ADDRESS/32" \  # On commente cette ligne
 
 echo "Tailscale démarré dans l'espace de noms $NS_NAME"

@@ -9,24 +9,28 @@ if [ -z "$NS_NAME" ] || [ -z "$ESP_IP" ]; then
   exit 1
 fi
 
-# Créer un veth pair pour relier l'hôte au namespace
-ip link add netns0-$NS_NAME type veth peer name netns0-host-$NS_NAME
-ip link set netns0-host-$NS_NAME up
-ip link set netns0-$NS_NAME netns $NS_NAME
+# Les noms d'interfaces doivent être plus courts (max 15 caractères)
+# Au lieu de "netns0-host-esp2" et "netns0-esp2", utilisons :
+VETH_HOST="veth0-h-$NS_NAME"  # ex: veth0-h-esp2
+VETH_NS="veth0-n-$NS_NAME"    # ex: veth0-n-esp2
 
-# Configuration dans le namespace
-ip netns exec $NS_NAME ip link set netns0-$NS_NAME up
-ip netns exec $NS_NAME ip addr add 10.200.0.2/24 dev netns0-$NS_NAME
+# Créer la paire veth
+ip link add name $VETH_HOST type veth peer name $VETH_NS
+ip link set $VETH_HOST up
+ip link set $VETH_NS netns $NS_NAME
 
-# Configuration sur l'hôte
-ip addr add 10.200.0.1/24 dev netns0-host-$NS_NAME
+# Configuration des adresses
+ip addr add 10.6.1.1/24 dev $VETH_HOST
+ip netns exec $NS_NAME ip link set $VETH_NS up
+ip netns exec $NS_NAME ip addr add 10.6.1.2/24 dev $VETH_NS
 
-# Ajouter les routes nécessaires
-ip route add $ESP_IP/32 via 10.200.0.2
+# Routes
+ip route add $ESP_IP via 10.6.1.2
+ip netns exec $NS_NAME ip route add 10.6.0.0/24 via 10.6.1.1
 
 # Configuration du NAT dans le namespace pour Tailscale
 ip netns exec $NS_NAME iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
-ip netns exec $NS_NAME iptables -A FORWARD -i netns0-$NS_NAME -o tailscale0 -j ACCEPT
-ip netns exec $NS_NAME iptables -A FORWARD -i tailscale0 -o netns0-$NS_NAME -m state --state RELATED,ESTABLISHED -j ACCEPT
+ip netns exec $NS_NAME iptables -A FORWARD -i $VETH_NS -o tailscale0 -j ACCEPT
+ip netns exec $NS_NAME iptables -A FORWARD -i tailscale0 -o $VETH_NS -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 echo "Configuration du routage interne terminée pour $NS_NAME" 

@@ -7,6 +7,12 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
+# Installer les outils DNS si nécessaire
+if ! command -v nslookup >/dev/null 2>&1; then
+    echo "Installation des outils DNS..."
+    apt-get update && apt-get install -y dnsutils
+fi
+
 # Rendre tous les scripts exécutables
 chmod +x "$(dirname "$0")"/*.sh
 
@@ -44,7 +50,7 @@ if ! ip netns exec $NS_NAME ping -c 1 8.8.8.8 > /dev/null 2>&1; then
     exit 1
 fi
 
-if ! ip netns exec $NS_NAME host controlplane.tailscale.com > /dev/null 2>&1; then
+if ! ip netns exec $NS_NAME nslookup google.com > /dev/null 2>&1; then
     echo "Erreur: La résolution DNS ne fonctionne pas dans le namespace"
     exit 1
 fi
