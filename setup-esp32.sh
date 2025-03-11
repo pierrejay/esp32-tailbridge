@@ -1,9 +1,18 @@
 #!/bin/bash
-# Usage: ./setup-esp32.sh <esp_name>
+# Usage: sudo ./setup-esp32.sh <esp_name>
+
+# Vérifier les droits root
+if [ "$EUID" -ne 0 ]; then
+    echo "Ce script doit être exécuté avec sudo"
+    exit 1
+fi
+
+# Rendre tous les scripts exécutables
+chmod +x "$(dirname "$0")"/*.sh
 
 ESP_NAME=$1
 if [ -z "$ESP_NAME" ]; then
-  echo "Usage: $0 <esp_name>"
+  echo "Usage: sudo $0 <esp_name>"
   exit 1
 fi
 
@@ -27,6 +36,18 @@ read -p "Entrez la clé d'authentification: " AUTHKEY
 
 # 1. Créer et configurer le namespace pour Tailscale
 ./isolate-tailscale.sh $NS_NAME $NEXT_INDEX
+
+# Vérifier la connectivité DNS
+echo "Vérification de la connectivité DNS dans le namespace..."
+if ! ip netns exec $NS_NAME ping -c 1 8.8.8.8 > /dev/null 2>&1; then
+    echo "Erreur: Pas de connectivité Internet dans le namespace"
+    exit 1
+fi
+
+if ! ip netns exec $NS_NAME host controlplane.tailscale.com > /dev/null 2>&1; then
+    echo "Erreur: La résolution DNS ne fonctionne pas dans le namespace"
+    exit 1
+fi
 
 # 2. Configurer WireGuard (dans l'espace global)
 ./setup-wireguard.sh $ESP_NAME $ESP_PUBKEY $ESP_IP
