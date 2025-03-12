@@ -17,13 +17,15 @@ remove_all_matching_rules() {
         table_opt="-t $table"
     fi
 
-    # Obtenir les numéros de ligne des règles correspondantes (en ordre décroissant)
-    local rule_numbers=$(iptables $table_opt -L $chain --line-numbers -n | grep "$pattern" | awk '{print $1}' | sort -nr)
-    
-    # Supprimer chaque règle par son numéro de ligne
-    for rule_num in $rule_numbers; do
-        echo "Suppression règle #$rule_num dans $chain ($table) contenant '$pattern'"
-        iptables $table_opt -D $chain $rule_num 2>/dev/null
+    # Continuer à essayer jusqu'à ce qu'il n'y ait plus de règles correspondantes
+    while iptables $table_opt -L $chain -n | grep -q "$pattern"; do
+        local rule_num=$(iptables $table_opt -L $chain --line-numbers -n | grep "$pattern" | head -n1 | awk '{print $1}')
+        if [ -n "$rule_num" ]; then
+            echo "Suppression règle #$rule_num dans $chain ($table) contenant '$pattern'"
+            iptables $table_opt -D $chain $rule_num
+        else
+            break
+        fi
     done
 }
 
@@ -65,9 +67,37 @@ cleanup_global_iptables() {
     remove_all_matching_rules "INPUT" "" "veth"
 }
 
+# Fonction pour supprimer une règle nftables spécifique
+cleanup_nft_rule() {
+    local chain="$1"
+    local table="$2"
+    local pattern="$3"
+    
+    # Obtenir le handle de la règle qui match le pattern
+    local handles=$(nft -a list chain ip $table $chain | grep "$pattern" | grep -o "handle [0-9]*" | awk '{print $2}')
+    
+    for handle in $handles; do
+        echo "Suppression règle nftables dans $table $chain (handle $handle) contenant '$pattern'"
+        nft delete rule ip $table $chain handle $handle
+    done
+}
+
+# Fonction pour nettoyer les règles nftables d'un ESP spécifique
+cleanup_nft_for_esp() {
+    local ns_name=$1
+    echo "Nettoyage des règles nftables pour $ns_name..."
+    
+    # Nettoyer les règles INPUT pour veth-h-$ns_name
+    cleanup_nft_rule "INPUT" "filter" "iifname \"veth-h-$ns_name\""
+    
+    # Nettoyer les règles FORWARD pour veth-h-$ns_name
+    cleanup_nft_rule "FORWARD" "filter" "oifname \"veth-h-$ns_name\""
+    cleanup_nft_rule "FORWARD" "filter" "iifname \"veth-h-$ns_name\""
+}
+
 cleanup_esp() {
     local name=$1
-    local ns_name="esp${name#esp}"  # Extrait le numéro de l'ESP
+    local ns_name="esp${name#esp}"
 
     echo "Nettoyage de $name (namespace: $ns_name)..."
 
@@ -95,6 +125,9 @@ cleanup_esp() {
 
     # Supprimer les clés WireGuard de l'ESP
     rm -rf "$HOME/esp-keys/$name"
+
+    # Nettoyer les règles nftables pour cet ESP
+    cleanup_nft_for_esp "$ns_name"
 
     echo "Nettoyage de $name terminé"
 }
@@ -164,6 +197,12 @@ if iptables -L INPUT -n | grep -q "veth"; then
     echo "Règles veth persistantes détectées, vidage complet de la chaîne INPUT..."
     flush_chain "INPUT"
 fi
+
+# Nettoyage final des règles tenaces avec protocole 0
+for veth in $(ip link show | grep 'veth' | cut -d: -f2 | cut -d@ -f1); do
+    iptables -D INPUT -i $veth -p 0 -j ACCEPT 2>/dev/null
+    iptables -D INPUT -i $veth -j ACCEPT 2>/dev/null
+done
 
 # Vérification finale
 echo "Vérification après nettoyage:"
