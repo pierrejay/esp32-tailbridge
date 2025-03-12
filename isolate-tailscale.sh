@@ -66,9 +66,6 @@ iptables -I FORWARD 1 -s "10.100.$INDEX.0/24" -j ACCEPT
 # 2. Autoriser le trafic de retour établi
 iptables -I FORWARD 2 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
 
-# 3. NAT pour l'accès Internet
-iptables -t nat -A POSTROUTING -s "10.100.$INDEX.0/24" -o "$DEFAULT_IF" -j MASQUERADE
-
 # Vérifications
 echo "Vérification de la configuration..."
 echo "1. Interface dans le namespace:"
