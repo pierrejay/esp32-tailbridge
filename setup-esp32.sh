@@ -23,8 +23,9 @@ if [ -z "$ESP_NAME" ]; then
 fi
 
 # Déterminer le prochain index disponible
-NEXT_INDEX=$(ls -1 /var/lib/tailscale-esp* 2>/dev/null | wc -l)
-NEXT_INDEX=$((NEXT_INDEX + 1))
+# Le plus2 est temporaire, pour les tests
+NEXT_INDEX=$(ip netns list | grep -c "esp")
+NEXT_INDEX=$((NEXT_INDEX + 2))
 
 
 # Générer une IP WireGuard pour l'ESP32
