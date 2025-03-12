@@ -77,3 +77,11 @@ ip netns exec $NS_NAME nslookup google.com
 mkdir -p /var/lib/tailscale-$NS_NAME
 
 echo "Espace de noms $NS_NAME isolé et prêt"
+
+# Créer le device TUN dans le namespace
+ip netns exec $NS_NAME mkdir -p /dev/net
+ip netns exec $NS_NAME mknod /dev/net/tun c 10 200
+ip netns exec $NS_NAME chmod 0666 /dev/net/tun
+
+# Activer le forwarding dans le namespace
+ip netns exec $NS_NAME sysctl -w net.ipv4.ip_forward=1

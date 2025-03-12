@@ -9,31 +9,33 @@ if [ -z "$NS_NAME" ] || [ -z "$ESP_IP" ]; then
   exit 1
 fi
 
-# Les noms d'interfaces doivent être plus courts (max 15 caractères)
-# Au lieu de "netns0-host-esp2" et "netns0-esp2", utilisons :
-VETH_HOST="veth0-h-$NS_NAME"  # ex: veth0-h-esp2
-VETH_NS="veth0-n-$NS_NAME"    # ex: veth0-n-esp2
+# Extraire l'index du nom du namespace
+INDEX=${NS_NAME#esp}
 
-# Créer la paire veth
-ip link add name $VETH_HOST type veth peer name $VETH_NS
-ip link set $VETH_HOST up
-ip link set $VETH_NS netns $NS_NAME
+# Interface veth interne au namespace
+VETH_NS="veth-n-$NS_NAME"
 
-# Configuration des adresses
-ip addr add 10.6.1.1/24 dev $VETH_HOST
-ip netns exec $NS_NAME ip link set $VETH_NS up
-ip netns exec $NS_NAME ip addr add 10.6.1.2/24 dev $VETH_NS
+# Configuration NAT dans le namespace
+ip netns exec $NS_NAME iptables -t nat -A POSTROUTING -s 10.6.0.0/24 -j MASQUERADE
 
-# Routes
-ip route add $ESP_IP via 10.6.1.2
-ip netns exec $NS_NAME ip route add 10.6.0.0/24 via 10.6.1.1
+# Configuration DNAT pour le port 80
+ip netns exec $NS_NAME iptables -t nat -A PREROUTING -i tailscale-netns -p tcp --dport 80 -j DNAT --to-destination $ESP_IP:80
 
-# Configuration du NAT dans le namespace pour Tailscale
-ip netns exec $NS_NAME iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
-ip netns exec $NS_NAME iptables -A FORWARD -i $VETH_NS -o tailscale0 -j ACCEPT
-ip netns exec $NS_NAME iptables -A FORWARD -i tailscale0 -o $VETH_NS -m state --state RELATED,ESTABLISHED -j ACCEPT
+# Route vers l'ESP depuis le namespace
+ip netns exec $NS_NAME ip route add $ESP_IP/32 dev $VETH_NS
 
-echo "Configuration du routage interne terminée pour $NS_NAME" 
+# Route inverse sur l'hôte et route spécifique pour WireGuard
+ip route replace $ESP_IP/32 dev wg0
+
+# Autoriser le forwarding entre les interfaces
+iptables -A FORWARD -i wg0 -o veth-h-$NS_NAME -j ACCEPT
+iptables -A FORWARD -i veth-h-$NS_NAME -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Règles de forwarding dans le namespace pour le port 80
+ip netns exec $NS_NAME iptables -A FORWARD -i tailscale-netns -o veth-esp2 -p tcp --dport 80 -j ACCEPT
+ip netns exec $NS_NAME iptables -A FORWARD -i veth-esp2 -o tailscale-netns -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+echo "Configuration du routage interne terminée pour $NS_NAME"
 
 # MODIFICATION DE LA CONFIGURATION POUR QUE CA MARCHE SUR ORACLE VM
 # sudo iptables -D INPUT -j REJECT --reject-with icmp-host-prohibited

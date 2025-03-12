@@ -26,6 +26,7 @@ fi
 NEXT_INDEX=$(ls -1 /var/lib/tailscale-esp* 2>/dev/null | wc -l)
 NEXT_INDEX=$((NEXT_INDEX + 1))
 
+
 # Générer une IP WireGuard pour l'ESP32
 ESP_IP="10.6.0.$((NEXT_INDEX + 1))"
 NS_NAME="esp$NEXT_INDEX"
