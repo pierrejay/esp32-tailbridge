@@ -18,8 +18,13 @@ fi
 SERVER_PRIVKEY=$(cat /etc/wireguard/wg0.key)
 SERVER_PUBKEY=$(cat /etc/wireguard/wg0.pub)
 
-# Créer ou mettre à jour la configuration WireGuard
-if [ ! -f /etc/wireguard/wg0.conf ]; then
+# Vérifier si l'interface wg0 existe déjà
+if ip link show wg0 &>/dev/null; then
+  # Ajouter directement le nouveau peer à l'interface active
+  echo "Ajout du peer $ESP_NAME à l'interface WireGuard existante..."
+  wg set wg0 peer $ESP_PUBKEY allowed-ips $ESP_IP/32 persistent-keepalive 25
+else
+  # Premier démarrage : créer une configuration de base
   cat > /etc/wireguard/wg0.conf << EOF
 [Interface]
 PrivateKey = $SERVER_PRIVKEY
@@ -27,11 +32,6 @@ Address = 10.6.0.1/24
 ListenPort = 51820
 SaveConfig = true
 
-EOF
-fi
-
-# Ajouter le peer ESP32
-cat >> /etc/wireguard/wg0.conf << EOF
 [Peer]
 # $ESP_NAME
 PublicKey = $ESP_PUBKEY
@@ -39,11 +39,10 @@ AllowedIPs = $ESP_IP/32
 PersistentKeepalive = 25
 EOF
 
-# Démarrer ou redémarrer WireGuard
-if ip link show wg0 &>/dev/null; then
-  wg-quick down wg0
+  # Démarrer WireGuard
+  wg-quick up wg0
+  echo "Interface WireGuard (wg0) créée avec le premier peer $ESP_NAME"
 fi
-wg-quick up wg0
 
 echo "Configuration WireGuard pour $ESP_NAME ($ESP_IP) terminée"
 echo "Configuration pour l'ESP32:"
