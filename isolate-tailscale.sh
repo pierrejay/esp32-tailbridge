@@ -19,8 +19,8 @@ echo "Configuration du namespace $NS_NAME..."
 ip netns add $NS_NAME
 
 # Créer les interfaces veth
-ip link add veth-$NS_NAME type veth peer name veth-host-$NS_NAME
-ip link set veth-host-$NS_NAME up
+ip link add veth-$NS_NAME type veth peer name veth-h-$NS_NAME
+ip link set veth-h-$NS_NAME up
 ip link set veth-$NS_NAME netns $NS_NAME
 
 # Configuration dans l'espace de noms
@@ -29,7 +29,7 @@ ip netns exec $NS_NAME ip link set veth-$NS_NAME up
 ip netns exec $NS_NAME ip addr add 10.100.$INDEX.2/24 dev veth-$NS_NAME
 
 # Configuration sur l'hôte
-ip addr add 10.100.$INDEX.1/24 dev veth-host-$NS_NAME
+ip addr add 10.100.$INDEX.1/24 dev veth-h-$NS_NAME
 
 # Configuration DNS
 mkdir -p /etc/netns/$NS_NAME
@@ -47,6 +47,18 @@ sysctl -w net.ipv4.ip_forward=1
 
 # Configuration du forwarding et NAT
 echo "Configuration du forwarding et NAT..."
+
+echo "Vérification des règles de forwarding système..."
+sysctl net.ipv4.conf.all.forwarding=1
+sysctl net.ipv4.conf.$DEFAULT_IF.forwarding=1
+
+# S'assurer que le traffic peut passer entre les interfaces
+iptables -A FORWARD -i $DEFAULT_IF -o veth-host-$NS_NAME -j ACCEPT
+iptables -A FORWARD -i veth-host-$NS_NAME -o $DEFAULT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Vérifier que le NAT est bien configuré
+iptables -t nat -C POSTROUTING -s 10.100.$INDEX.0/24 -o $DEFAULT_IF -j MASQUERADE || \
+  iptables -t nat -A POSTROUTING -s 10.100.$INDEX.0/24 -o $DEFAULT_IF -j MASQUERADE
 
 # 1. Autoriser tout le trafic sortant du namespace
 iptables -I FORWARD 1 -s "10.100.$INDEX.0/24" -j ACCEPT

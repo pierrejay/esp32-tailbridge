@@ -24,13 +24,20 @@ cleanup_esp() {
 
     # Supprimer les interfaces veth
     ip link del "veth-$ns_name" 2>/dev/null
-    ip link del "netns0-host-$ns_name" 2>/dev/null
+    ip link del "veth-h-$ns_name" 2>/dev/null
 
     # Supprimer le namespace
     ip netns del "$ns_name" 2>/dev/null
 
     # Supprimer la configuration DNS du namespace
     rm -rf "/etc/netns/$ns_name"
+
+    # Nettoyer les règles iptables spécifiques à cet ESP
+    local ns_index="${name#esp}"
+    iptables -D FORWARD -i wg0 -o veth-host-$name -j ACCEPT 2>/dev/null
+    iptables -D FORWARD -i veth-host-$name -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
+    iptables -D FORWARD -i ens3 -o veth-host-$name -j ACCEPT 2>/dev/null
+    iptables -D FORWARD -i veth-host-$name -o ens3 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
 
     # Supprimer les clés WireGuard de l'ESP
     rm -rf "$HOME/esp-keys/$name"

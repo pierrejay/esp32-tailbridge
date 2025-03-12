@@ -23,14 +23,17 @@ if [ -z "$ESP_NAME" ]; then
 fi
 
 # Déterminer le prochain index disponible
-# Le plus2 est temporaire, pour les tests
 NEXT_INDEX=$(ip netns list | grep -c "esp")
-NEXT_INDEX=$((NEXT_INDEX + 2))
+NEXT_INDEX=$((NEXT_INDEX + 1))
 
 
 # Générer une IP WireGuard pour l'ESP32
 ESP_IP="10.6.0.$((NEXT_INDEX + 1))"
 NS_NAME="esp$NEXT_INDEX"
+
+# Supprimer les anciennes règles qui pourraient interférer
+iptables -D FORWARD -i wg0 -o veth-host-$NS_NAME -j ACCEPT 2>/dev/null
+iptables -D FORWARD -i veth-host-$NS_NAME -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
 
 # Obtenir le vrai home directory de l'utilisateur qui a lancé sudo
 REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
