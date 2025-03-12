@@ -45,6 +45,32 @@ EOF
 fi
 
 echo "Configuration WireGuard pour $ESP_NAME ($ESP_IP) terminée"
+
+# Fonction pour obtenir l'IP publique avec résolution DNS manuelle
+get_public_ip() {
+  if command -v dig >/dev/null 2>&1; then
+    echo "Test avec dig..."
+    IP=$(dig +short ifconfig.me @8.8.8.8)
+    if [ -n "$IP" ]; then
+      # Utiliser curl avec l'IP directement
+      curl -s --connect-to ifconfig.me:80:$IP:80 http://ifconfig.me
+      return
+    fi
+  fi
+
+  # Fallback avec nslookup si dig n'est pas disponible
+  if command -v nslookup >/dev/null 2>&1; then
+    IP=$(nslookup ifconfig.me 8.8.8.8 | awk '/Address/ { print $2 }' | tail -n1)
+    if [ -n "$IP" ]; then
+      curl -s --connect-to ifconfig.me:80:$IP:80 http://ifconfig.me
+      return
+    fi
+  fi
+
+  # Si tout échoue, utiliser une IP par défaut ou afficher un message d'erreur
+  echo "Impossible de récupérer l'IP publique. Veuillez la configurer manuellement."
+}
+
 echo "Configuration pour l'ESP32:"
 cat << EOF
 [Interface]
@@ -54,7 +80,7 @@ DNS = 1.1.1.1
 
 [Peer]
 PublicKey = $SERVER_PUBKEY
-Endpoint = $(curl -s ifconfig.me):51820
+Endpoint = $(get_public_ip):51820
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 25
 EOF
