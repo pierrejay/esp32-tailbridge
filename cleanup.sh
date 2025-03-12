@@ -6,28 +6,44 @@
 
 ESP_NAME=$1
 
-# Fonction pour nettoyer les règles iptables spécifiques à un ESP
+# Fonction pour supprimer toutes les règles correspondant à un pattern (chaîne, table, pattern)
+remove_all_matching_rules() {
+    local chain="$1"
+    local table="$2"
+    local pattern="$3"
+    local table_opt=""
+    
+    if [ -n "$table" ]; then
+        table_opt="-t $table"
+    fi
+
+    # Obtenir les numéros de ligne des règles correspondantes (en ordre décroissant)
+    local rule_numbers=$(iptables $table_opt -L $chain --line-numbers -n | grep "$pattern" | awk '{print $1}' | sort -nr)
+    
+    # Supprimer chaque règle par son numéro de ligne
+    for rule_num in $rule_numbers; do
+        echo "Suppression règle #$rule_num dans $chain ($table) contenant '$pattern'"
+        iptables $table_opt -D $chain $rule_num 2>/dev/null
+    done
+}
+
+# Fonction pour nettoyer toutes les règles spécifiques à un ESP
 cleanup_iptables_for_esp() {
     local ns_name=$1
     local index=${ns_name#esp}
-    echo "Nettoyage des règles iptables pour $ns_name..."
+    echo "Nettoyage exhaustif des règles iptables pour $ns_name..."
 
-    # Nettoyer les règles INPUT
-    iptables -D INPUT -i veth-h-$ns_name -j ACCEPT 2>/dev/null
-
-    # Nettoyer les règles FORWARD spécifiques
-    iptables -D FORWARD -i wg0 -o veth-h-$ns_name -j ACCEPT 2>/dev/null
-    iptables -D FORWARD -i veth-h-$ns_name -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
-    iptables -D FORWARD -i ens3 -o veth-h-$ns_name -j ACCEPT 2>/dev/null
-    iptables -D FORWARD -i veth-h-$ns_name -o ens3 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
-
-    # Nettoyer les règles FORWARD basées sur les réseaux
-    while iptables -D FORWARD -s 10.100.$index.0/24 -j ACCEPT 2>/dev/null; do
-        echo "Suppression d'une règle FORWARD pour 10.100.$index.0/24"
-    done
-
-    # Nettoyer les règles NAT
-    iptables -t nat -D POSTROUTING -s 10.100.$index.0/24 -o ens3 -j MASQUERADE 2>/dev/null
+    # Suppression des règles INPUT avec veth-h-$ns_name
+    remove_all_matching_rules "INPUT" "" "veth-h-$ns_name"
+    
+    # Suppression des règles FORWARD avec veth-h-$ns_name
+    remove_all_matching_rules "FORWARD" "" "veth-h-$ns_name"
+    
+    # Suppression des règles FORWARD pour le réseau 10.100.$index.0/24
+    remove_all_matching_rules "FORWARD" "" "10.100.$index.0/24"
+    
+    # Suppression des règles NAT POSTROUTING pour le réseau 10.100.$index.0/24
+    remove_all_matching_rules "POSTROUTING" "nat" "10.100.$index.0/24"
 }
 
 # Fonction pour nettoyer les règles iptables globales
@@ -35,19 +51,18 @@ cleanup_global_iptables() {
     echo "Nettoyage des règles iptables globales..."
 
     # Nettoyer les règles FORWARD globales
-    while iptables -D FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null; do
-        echo "Suppression d'une règle FORWARD pour RELATED,ESTABLISHED"
-    done
-
-    # Alternative plus sûre avec grep
-    for rule in $(iptables -L FORWARD --line-numbers -n | grep "RELATED,ESTABLISHED" | awk '{print $1}' | sort -nr); do
-        iptables -D FORWARD $rule 2>/dev/null
-    done
-
-    # Supprimer toutes les règles avec "ctstate RELATED,ESTABLISHED"
-    for rule in $(iptables -L FORWARD --line-numbers -n | grep "ctstate RELATED,ESTABLISHED" | awk '{print $1}' | sort -nr); do
-        iptables -D FORWARD $rule 2>/dev/null
-    done
+    remove_all_matching_rules "FORWARD" "" "ctstate RELATED,ESTABLISHED"
+    remove_all_matching_rules "FORWARD" "" "state RELATED,ESTABLISHED"
+    
+    # Supprimer les règles pour tous les réseaux 10.100
+    remove_all_matching_rules "FORWARD" "" "10.100"
+    remove_all_matching_rules "POSTROUTING" "nat" "10.100"
+    
+    # Supprimer les règles pour l'interface wg0
+    remove_all_matching_rules "FORWARD" "" "wg0"
+    
+    # Supprimer TOUTES les règles INPUT pour veth
+    remove_all_matching_rules "INPUT" "" "veth"
 }
 
 cleanup_esp() {
@@ -84,6 +99,20 @@ cleanup_esp() {
     echo "Nettoyage de $name terminé"
 }
 
+# Fonction pour vider complètement une chaîne iptables
+flush_chain() {
+    local chain="$1"
+    local table="$2"
+    local table_opt=""
+    
+    if [ -n "$table" ]; then
+        table_opt="-t $table"
+    fi
+    
+    echo "Vidage complet de la chaîne $chain ${table:+dans la table $table}..."
+    iptables $table_opt -F $chain 2>/dev/null
+}
+
 # Arrêter WireGuard (dans l'espace global)
 if ip link show wg0 &>/dev/null; then
     echo "Arrêt de WireGuard..."
@@ -112,8 +141,28 @@ else
     # Nettoyer uniquement l'ESP spécifié
     cleanup_esp "$ESP_NAME"
     
+    # Nettoyer également les règles INPUT pour veth, même en mode ESP unique
+    remove_all_matching_rules "INPUT" "" "veth-h-$ESP_NAME"
+    
     echo "Note: La configuration WireGuard globale n'a pas été supprimée"
     echo "Pour la supprimer complètement, relancez sans argument: ./cleanup.sh"
+fi
+
+# Nettoyage final des règles veth résiduelles dans INPUT
+remove_all_matching_rules "INPUT" "" "veth"
+
+# Tentatives supplémentaires pour les règles tenaces
+echo "Nettoyage supplémentaire des règles tenaces..."
+
+# 1. Suppression directe et ciblée
+iptables -D INPUT -i veth-h-esp1 -j ACCEPT 2>/dev/null
+iptables -D INPUT -i veth-h-esp1 -p 0 -j ACCEPT 2>/dev/null
+
+# 2. Si les règles veth persistent, on vide complètement la chaîne INPUT
+# et on laisse la politique par défaut (généralement ACCEPT)
+if iptables -L INPUT -n | grep -q "veth"; then
+    echo "Règles veth persistantes détectées, vidage complet de la chaîne INPUT..."
+    flush_chain "INPUT"
 fi
 
 # Vérification finale
