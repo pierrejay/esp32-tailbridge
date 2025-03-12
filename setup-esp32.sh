@@ -32,8 +32,8 @@ ESP_IP="10.6.0.$((NEXT_INDEX + 1))"
 NS_NAME="esp$NEXT_INDEX"
 
 # Supprimer les anciennes règles qui pourraient interférer
-iptables -D FORWARD -i wg0 -o veth-host-$NS_NAME -j ACCEPT 2>/dev/null
-iptables -D FORWARD -i veth-host-$NS_NAME -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
+iptables -D FORWARD -i wg0 -o veth-h-$NS_NAME -j ACCEPT 2>/dev/null
+iptables -D FORWARD -i veth-h-$NS_NAME -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
 
 # Obtenir le vrai home directory de l'utilisateur qui a lancé sudo
 REAL_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)

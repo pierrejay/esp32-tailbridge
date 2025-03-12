@@ -53,8 +53,11 @@ sysctl net.ipv4.conf.all.forwarding=1
 sysctl net.ipv4.conf.$DEFAULT_IF.forwarding=1
 
 # S'assurer que le traffic peut passer entre les interfaces
-iptables -A FORWARD -i $DEFAULT_IF -o veth-host-$NS_NAME -j ACCEPT
-iptables -A FORWARD -i veth-host-$NS_NAME -o $DEFAULT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i $DEFAULT_IF -o veth-h-$NS_NAME -j ACCEPT
+iptables -A FORWARD -i veth-h-$NS_NAME -o $DEFAULT_IF -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Autoriser le trafic entrant depuis l'interface veth 
+iptables -A INPUT -i veth-h-$NS_NAME -j ACCEPT
 
 # Vérifier que le NAT est bien configuré
 iptables -t nat -C POSTROUTING -s 10.100.$INDEX.0/24 -o $DEFAULT_IF -j MASQUERADE || \
