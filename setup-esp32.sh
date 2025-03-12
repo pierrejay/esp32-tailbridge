@@ -7,10 +7,83 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Installer les outils DNS si nécessaire
-if ! command -v nslookup >/dev/null 2>&1; then
-    echo "Installation des outils DNS..."
-    apt-get update && apt-get install -y dnsutils
+# Fonction pour installer les dépendances
+install_dependencies() {
+    echo "Installation des dépendances..."
+    
+    # Mise à jour des paquets
+    apt-get update
+
+    # Installation de WireGuard
+    if ! command -v wg >/dev/null 2>&1; then
+        echo "Installation de WireGuard..."
+        apt-get install -y wireguard
+    fi
+
+    # Installation des outils DNS (dig, nslookup)
+    if ! command -v dig >/dev/null 2>&1; then
+        echo "Installation des outils DNS..."
+        apt-get install -y dnsutils
+    fi
+
+    # Installation de curl
+    if ! command -v curl >/dev/null 2>&1; then
+        echo "Installation de curl..."
+        apt-get install -y curl
+    fi
+
+    # Installation de Tailscale
+    if ! command -v tailscale >/dev/null 2>&1; then
+        echo "Installation de Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | sh
+    fi
+
+    # Installation des outils réseau (pour ip, iptables, etc.)
+    if ! command -v ip >/dev/null 2>&1; then
+        echo "Installation des outils réseau..."
+        apt-get install -y iproute2
+    fi
+
+    # Installation de iptables
+    if ! command -v iptables >/dev/null 2>&1; then
+        echo "Installation de iptables..."
+        apt-get install -y iptables
+    fi
+}
+
+# Vérifier et installer les dépendances
+echo "Vérification des dépendances..."
+MISSING_DEPS=0
+
+# Liste des commandes requises
+REQUIRED_COMMANDS=(
+    "wg"        # WireGuard
+    "dig"       # DNS utils
+    "curl"      # Pour les téléchargements
+    "tailscale" # Tailscale
+    "ip"        # iproute2
+    "iptables"  # iptables
+)
+
+# Vérifier chaque commande
+for cmd in "${REQUIRED_COMMANDS[@]}"; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Commande manquante: $cmd"
+        MISSING_DEPS=1
+    fi
+done
+
+# Installer les dépendances si nécessaire
+if [ "$MISSING_DEPS" -eq 1 ]; then
+    echo "Des dépendances sont manquantes."
+    read -p "Voulez-vous les installer maintenant ? (o/N) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Oo]$ ]]; then
+        install_dependencies
+    else
+        echo "Installation annulée. Le script ne peut pas continuer sans les dépendances."
+        exit 1
+    fi
 fi
 
 # Rendre tous les scripts exécutables
