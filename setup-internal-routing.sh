@@ -9,28 +9,45 @@ if [ -z "$NS_NAME" ] || [ -z "$ESP_IP" ]; then
   exit 1
 fi
 
-# Les noms d'interfaces doivent être plus courts (max 15 caractères)
-# Au lieu de "netns0-host-esp2" et "netns0-esp2", utilisons :
-VETH_HOST="veth0-h-$NS_NAME"  # ex: veth0-h-esp2
-VETH_NS="veth0-n-$NS_NAME"    # ex: veth0-n-esp2
+# Extract the index from the namespace name
+INDEX=${NS_NAME#esp}
 
-# Créer la paire veth
-ip link add name $VETH_HOST type veth peer name $VETH_NS
-ip link set $VETH_HOST up
-ip link set $VETH_NS netns $NS_NAME
+# Correct interface names
+VETH_NS="veth-$NS_NAME"
+VETH_HOST="veth-h-$NS_NAME"
 
-# Configuration des adresses
-ip addr add 10.6.1.1/24 dev $VETH_HOST
-ip netns exec $NS_NAME ip link set $VETH_NS up
-ip netns exec $NS_NAME ip addr add 10.6.1.2/24 dev $VETH_NS
+echo "Configuration of routing for $NS_NAME with ESP IP $ESP_IP"
+echo "Interfaces: $VETH_NS (namespace) and $VETH_HOST (host)"
 
-# Routes
-ip route add $ESP_IP via 10.6.1.2
-ip netns exec $NS_NAME ip route add 10.6.0.0/24 via 10.6.1.1
+# Check if the interfaces exist
+if ! ip link show $VETH_HOST &>/dev/null; then
+  echo "ERROR: The interface $VETH_HOST does not exist in the host"
+  exit 1
+fi
 
-# Configuration du NAT dans le namespace pour Tailscale
-ip netns exec $NS_NAME iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
-ip netns exec $NS_NAME iptables -A FORWARD -i $VETH_NS -o tailscale0 -j ACCEPT
-ip netns exec $NS_NAME iptables -A FORWARD -i tailscale0 -o $VETH_NS -m state --state RELATED,ESTABLISHED -j ACCEPT
+if ! ip netns exec $NS_NAME ip link show $VETH_NS &>/dev/null; then
+  echo "ERROR: The interface $VETH_NS does not exist in the namespace $NS_NAME"
+  exit 1
+fi
 
-echo "Configuration du routage interne terminée pour $NS_NAME" 
+# Configuration NAT in the namespace
+ip netns exec $NS_NAME iptables -t nat -A POSTROUTING -s 10.6.0.0/24 -j MASQUERADE
+
+# Configuration DNAT for port 80
+ip netns exec $NS_NAME iptables -t nat -A PREROUTING -i tailscale-netns -p tcp --dport 80 -j DNAT --to-destination $ESP_IP:80
+
+# Route to the ESP from the namespace
+ip netns exec $NS_NAME ip route add $ESP_IP/32 via 10.100.$INDEX.1
+
+# Inverse route on the host (normally not necessary)
+# ip route replace $ESP_IP/32 dev wg0
+
+# Allow forwarding between interfaces
+iptables -A FORWARD -i wg0 -o $VETH_HOST -j ACCEPT
+iptables -A FORWARD -i $VETH_HOST -o wg0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Forwarding rules in the namespace for port 80
+ip netns exec $NS_NAME iptables -A FORWARD -i tailscale-netns -o $VETH_NS -p tcp --dport 80 -j ACCEPT
+ip netns exec $NS_NAME iptables -A FORWARD -i $VETH_NS -o tailscale-netns -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+echo "Internal routing configuration completed for $NS_NAME"
