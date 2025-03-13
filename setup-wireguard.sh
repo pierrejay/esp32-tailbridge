@@ -10,7 +10,7 @@ if [ -z "$ESP_NAME" ] || [ -z "$ESP_PUBKEY" ] || [ -z "$ESP_IP" ]; then
   exit 1
 fi
 
-# Générer des clés si elles n'existent pas
+# Generate keys if they don't exist
 if [ ! -f /etc/wireguard/wg0.key ]; then
   wg genkey | tee /etc/wireguard/wg0.key | wg pubkey > /etc/wireguard/wg0.pub
 fi
@@ -18,13 +18,13 @@ fi
 SERVER_PRIVKEY=$(cat /etc/wireguard/wg0.key)
 SERVER_PUBKEY=$(cat /etc/wireguard/wg0.pub)
 
-# Vérifier si l'interface wg0 existe déjà
+# Check if the wg0 interface already exists
 if ip link show wg0 &>/dev/null; then
-  # Ajouter directement le nouveau peer à l'interface active
-  echo "Ajout du peer $ESP_NAME à l'interface WireGuard existante..."
+  # Add the new peer directly to the active interface
+  echo "Adding peer $ESP_NAME to the existing WireGuard interface..."
   wg set wg0 peer $ESP_PUBKEY allowed-ips $ESP_IP/32 persistent-keepalive 25
 else
-  # Premier démarrage : créer une configuration de base
+  # First startup: create a basic configuration
   cat > /etc/wireguard/wg0.conf << EOF
 [Interface]
 PrivateKey = $SERVER_PRIVKEY
@@ -39,26 +39,26 @@ AllowedIPs = $ESP_IP/32
 PersistentKeepalive = 25
 EOF
 
-  # Démarrer WireGuard
+  # Start WireGuard
   wg-quick up wg0
-  echo "Interface WireGuard (wg0) créée avec le premier peer $ESP_NAME"
+  echo "WireGuard interface (wg0) created with the first peer $ESP_NAME"
 fi
 
-echo "Configuration WireGuard pour $ESP_NAME ($ESP_IP) terminée"
+echo "WireGuard configuration for $ESP_NAME ($ESP_IP) completed"
 
-# Fonction pour obtenir l'IP publique avec résolution DNS manuelle
+# Function to get the public IP with manual DNS resolution
 get_public_ip() {
   if command -v dig >/dev/null 2>&1; then
-    echo "Test avec dig..."
+    echo "Test with dig..."
     IP=$(dig +short ifconfig.me @8.8.8.8)
     if [ -n "$IP" ]; then
-      # Utiliser curl avec l'IP directement
+      # Use curl with the IP directly
       curl -s --connect-to ifconfig.me:80:$IP:80 http://ifconfig.me
       return
     fi
   fi
 
-  # Fallback avec nslookup si dig n'est pas disponible
+  # Fallback with nslookup if dig is not available
   if command -v nslookup >/dev/null 2>&1; then
     IP=$(nslookup ifconfig.me 8.8.8.8 | awk '/Address/ { print $2 }' | tail -n1)
     if [ -n "$IP" ]; then
@@ -67,14 +67,14 @@ get_public_ip() {
     fi
   fi
 
-  # Si tout échoue, utiliser une IP par défaut ou afficher un message d'erreur
-  echo "Impossible de récupérer l'IP publique. Veuillez la configurer manuellement."
+  # If everything fails, use a default IP or display an error message
+  echo "Unable to retrieve the public IP. Please configure it manually."
 }
 
-echo "Configuration pour l'ESP32:"
+echo "Configuration for the ESP32:"
 cat << EOF
 [Interface]
-PrivateKey = <clé privée de l'ESP32>
+PrivateKey = <ESP32 private key>
 Address = $ESP_IP/24
 DNS = 1.1.1.1
 
