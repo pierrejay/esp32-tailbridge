@@ -63,19 +63,6 @@ graph LR
     %% Connexions des clients vers Tailnet
     TAILNET <--> CLIENTA 
     TAILNET <--> CLIENTB
-
-    %% Définition des styles pour améliorer l'esthétique
-    classDef espStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px,stroke-dasharray:5,5;
-    classDef wgStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
-    classDef proxyStyle fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
-    classDef tailnetStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
-    classDef clientStyle fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px;
-
-    class ESP1,ESP2,ESPX espStyle;
-    class WG wgStyle;
-    class TS1,TS2,TSX proxyStyle;
-    class TAILNET tailnetStyle;
-    class CLIENT1,CLIENT2,CLIENTY clientStyle;
 ```
 
 The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VPS, Ubuntu 22.04) that:
