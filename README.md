@@ -19,7 +19,64 @@ However, for IoT applications, we often need to:
 
 ## Solution Architecture
 
-![ESP32-Tailscale Proxy Architecture](https://placeholder.com/wp-content/uploads/2018/10/placeholder.png)
+```mermaid
+graph LR
+    %% Regroupement des dispositifs ESP32
+    subgraph ESP32 [MCUs]
+      direction LR
+      ESP1(ESP32 #1)
+      ESP2(ESP32 #2)
+      ESPX(ESP32 #N)
+    end
+
+    %% Serveur Proxy hébergeant les instances Tailscale
+    subgraph PROXY [WG+TS Proxy Server]
+      direction TB
+      WG(WireGuard)
+      TS1(Tailscale #1)
+      TS2(Tailscale #2)
+      TSX(Tailscale #N)
+    end
+
+    %% Noeud central Tailnet
+    TAILNET((Tailnet))
+
+    %% Regroupement des clients Tailscale
+      CLIENTA(Client A)
+      CLIENTB(Client B)
+
+    %% Connexions ESP32 vers WireGuard
+    ESP1 -->|WireGuard| WG
+    ESP2 -->|WireGuard| WG
+    ESPX -->|WireGuard| WG
+
+    %% Connexions du serveur WireGuard vers les instances Tailscale
+    WG --> TS1
+    WG --> TS2
+    WG --> TSX
+
+    %% Connexions des instances Tailscale vers Tailnet
+    TS1 <--> TAILNET
+    TS2 <--> TAILNET
+    TSX <--> TAILNET
+
+    %% Connexions des clients vers Tailnet
+    TAILNET <--> CLIENTA 
+    TAILNET <--> CLIENTB
+
+    %% Définition des styles pour améliorer l'esthétique
+    classDef espStyle fill:#fce4ec,stroke:#880e4f,stroke-width:2px,stroke-dasharray:5,5;
+    classDef wgStyle fill:#e3f2fd,stroke:#1565c0,stroke-width:2px;
+    classDef proxyStyle fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef tailnetStyle fill:#fff3e0,stroke:#ef6c00,stroke-width:2px;
+    classDef clientStyle fill:#f3e5f5,stroke:#6a1b9a,stroke-width:2px;
+
+    class ESP1,ESP2,ESPX espStyle;
+    class WG wgStyle;
+    class TS1,TS2,TSX proxyStyle;
+    class TAILNET tailnetStyle;
+    class CLIENT1,CLIENT2,CLIENTY clientStyle;
+```
 
 The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VPS, Ubuntu 22.04) that:
 
