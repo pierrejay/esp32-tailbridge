@@ -19,6 +19,7 @@ However, for IoT applications, we often need to:
 
 ## Solution Architecture
 
+*Tailscale IP addresses are not real, just for illustration*
 ```mermaid
 graph LR
     %% Regroupement des dispositifs ESP32
@@ -46,9 +47,9 @@ graph LR
       CLIENTB(Client B)
 
     %% Connexions ESP32 vers WireGuard
-    ESP1 -->|10.6.0.1| WG
-    ESP2 -->|10.6.0.2| WG
-    ESPX -->|10.6.0.N| WG
+    ESP1 -->|10.6.0.2| WG
+    ESP2 -->|10.6.0.3| WG
+    ESPX -->|10.6.0.(N+1)| WG
 
     %% Connexions du serveur WireGuard vers les instances Tailscale
     WG --> TS1
