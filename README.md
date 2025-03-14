@@ -49,7 +49,7 @@ graph LR
     %% Connexions ESP32 vers WireGuard
     ESP1 -->|10.6.0.2| WG
     ESP2 -->|10.6.0.3| WG
-    ESPX -->|10.6.0.(N+1)| WG
+    ESPX -->|10.6.0.N+1| WG
 
     %% Connexions du serveur WireGuard vers les instances Tailscale
     WG --> TS1
