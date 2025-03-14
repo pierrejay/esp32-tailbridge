@@ -1,4 +1,4 @@
-# Tailscale bridge for ESP32 based on WireGuard proxy server
+# WireGuard-Tailscale bridge for ESP32
 
 ## Overview
 
