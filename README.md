@@ -156,8 +156,9 @@ The proxy server configuration is handled through a series of shell scripts:
 3. `setup-wireguard.sh`: Configures the WireGuard server
 4. `run-tailscale-namespace.sh`: Starts Tailscale in the isolated namespace
 5. `setup-internal-routing.sh`: Creates routing between interfaces
-6. `wireguard-monitor.py`: Monitors and manages WireGuard connections
-7. `cleanup.sh`: Removes configurations for cleanup
+6. `cleanup.sh`: Removes configurations for cleanup
+
+An additional script `wireguard-monitor.py` is used to monitor the WireGuard connection and reload it when it detects packets coming from a legit IP with a different, unregistered origin port. It is only used for tests, as when reconnecting an ESP32 quickly when behind a NAT, it can get an origin port unknown to the WireGuard server for its public key & IP, which it won't update immediately in its configuration. This can cause the ESP32 to be unable to connect for a random amount of time.
 
 ## Setup Instructions
 
@@ -181,6 +182,7 @@ sudo ./setup-esp32.sh <esp_name>
 
 3. When prompted, get a Tailscale authentication key from your [Tailscale admin console](https://login.tailscale.com/admin/settings/keys)
 4. The script will generate a WireGuard configuration for your ESP32
+5. The Tailscale node for ESP32 will be commissioned and appear in your Tailscale admin panel
 
 ### ESP32 Setup
 
@@ -191,28 +193,15 @@ sudo ./setup-esp32.sh <esp_name>
    - Endpoint address and port
    - Endpoint public key
 3. Compile and upload the code to your ESP32
-4. The ESP32 will appear in your Tailscale admin panel once connected
+4. Let it connect to the WireGuard server and handle requests from other Tailscale nodes
 
 ## How It Works
 
-1. **Namespace Isolation**: Each ESP32 gets its own isolated Linux network namespace
-2. **Multi-instance Tailscale**: A separate Tailscale instance runs in each namespace
-3. **WireGuard Tunneling**: ESP32 connects via WireGuard to the server
-4. **Transparent Routing**: Traffic is seamlessly routed between interfaces
-5. **NAT Traversal**: Both WireGuard and Tailscale handle NAT traversal
-6. **Connection Monitoring**: Automatic reconnection and port updating
-
-### Network Architecture
-
-```
-┌─────────────┐          ┌─────────────────────────────────────┐          ┌─────────────┐
-│             │          │           Proxy Server              │          │             │
-│   ESP32     │◄────────►│  ┌─────────┐      ┌─────────────┐   │◄────────►│  Tailscale  │
-│ (WireGuard) │   WG     │  │WireGuard│ VETH │  Tailscale  │   │ Tailscale│   Client    │
-│             │          │  │         │◄────►│ (Namespace) │   │          │             │
-└─────────────┘          │  └─────────┘      └─────────────┘   │          └─────────────┘
-                         └─────────────────────────────────────┘
-```
+- Each ESP32 gets its own isolated Linux network namespace
+- A separate Tailscale instance runs in each namespace
+- ESP32 connects via WireGuard to the server
+- Traffic is seamlessly routed between interfaces with DNAT / `iptables` rules
+- Both WireGuard and Tailscale handle NAT traversal
 
 ## Testing and Verification
 
@@ -238,13 +227,6 @@ sudo ip netns exec esp1 tailscale --socket=/var/run/tailscale-esp1.sock status
   - Each namespace adds minimal overhead
   - Main limitation is typically network bandwidth, not CPU or memory
 
-## Security Considerations
-
-- Keep all WireGuard private keys secure
-- Use unique Tailscale authorization keys for each namespace
-- Configure firewall rules to only expose the necessary WireGuard port
-- Consider using pre-shared keys for additional WireGuard security
-
 ## Troubleshooting
 
 ### Common Issues
@@ -263,10 +245,6 @@ sudo ip netns exec esp1 tailscale --socket=/var/run/tailscale-esp1.sock status
    - Verify iptables rules are set correctly
    - Check that IP forwarding is enabled on the server
    - Verify the network interface configurations
-
-4. **ESP32 Reconnection Issues**:
-   - The wireguard-monitor.py script handles port changes
-   - Ensure the script is running in the background
 
 ### Diagnostic Commands
 
