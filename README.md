@@ -95,6 +95,19 @@ This approach makes each ESP32 appear as a distinct machine in your Tailnet (unl
 
 ## Implementation Details
 
+### Proxy Server Setup
+
+The proxy server configuration is handled through a series of shell scripts:
+
+1. `setup-esp32.sh`: Main entry point that orchestrates the setup process
+2. `isolate-tailscale.sh`: Creates isolated network namespaces
+3. `setup-wireguard.sh`: Configures the WireGuard server
+4. `run-tailscale-namespace.sh`: Starts Tailscale in the isolated namespace
+5. `setup-internal-routing.sh`: Creates routing between interfaces
+6. `cleanup.sh`: Removes configurations for cleanup
+
+An additional script `wireguard-monitor.py` is used to monitor the WireGuard connection and reload it when it detects packets coming from a legit IP with a different, unregistered origin port. It is only used for tests, as when reconnecting an ESP32 quickly when behind a NAT, it can get an origin port unknown to the WireGuard server for its public key & IP, which it won't update immediately in its configuration. This can cause the ESP32 to be unable to connect for a random amount of time.
+
 ### ESP32 Test Code
 
 The ESP32 side uses a WireGuard client library adapted from ESPHome [implementation](https://github.com/esphome/esphome/tree/dev/esphome/components/wireguard) & [library](https://github.com/droscy/esp_wireguard). The example implementation includes:
@@ -146,19 +159,6 @@ void loop() {
   delay(100);
 }
 ```
-
-### Proxy Server Setup
-
-The proxy server configuration is handled through a series of shell scripts:
-
-1. `setup-esp32.sh`: Main entry point that orchestrates the setup process
-2. `isolate-tailscale.sh`: Creates isolated network namespaces
-3. `setup-wireguard.sh`: Configures the WireGuard server
-4. `run-tailscale-namespace.sh`: Starts Tailscale in the isolated namespace
-5. `setup-internal-routing.sh`: Creates routing between interfaces
-6. `cleanup.sh`: Removes configurations for cleanup
-
-An additional script `wireguard-monitor.py` is used to monitor the WireGuard connection and reload it when it detects packets coming from a legit IP with a different, unregistered origin port. It is only used for tests, as when reconnecting an ESP32 quickly when behind a NAT, it can get an origin port unknown to the WireGuard server for its public key & IP, which it won't update immediately in its configuration. This can cause the ESP32 to be unable to connect for a random amount of time.
 
 ## Setup Instructions
 
