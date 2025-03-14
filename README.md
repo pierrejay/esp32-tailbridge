@@ -170,7 +170,7 @@ void loop() {
   - Tailscale
   - Python 3.x
   (will be installed by the scripts if not present)
-- PlatformIO + ESP32 Arduino platform: [pioarduino](https://github.com/pioarduino/platform-espressif32)
+- PlatformIO + ESP32 Arduino Core 3.0+: [pioarduino](https://github.com/pioarduino/platform-espressif32)
 
 ### Server Setup
 
