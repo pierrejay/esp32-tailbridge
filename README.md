@@ -72,7 +72,7 @@ The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VP
 3. Runs a separate Tailscale instance in each namespace
 4. Routes traffic between WireGuard and Tailscale interfaces
 
-This approach makes each ESP32 appear as a distinct machine in your Tailnet (unlike the solution using '--advertise-routes'), with its own IP address.
+This approach makes each ESP32 appear as a distinct machine in your Tailnet (unlike the solution using `--advertise-routes`), with its own IP address.
 
 ### Key Components
 
