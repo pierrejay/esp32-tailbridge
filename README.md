@@ -46,9 +46,9 @@ graph LR
       CLIENTB(Client B)
 
     %% Connexions ESP32 vers WireGuard
-    ESP1 -->|WireGuard| WG
-    ESP2 -->|WireGuard| WG
-    ESPX -->|WireGuard| WG
+    ESP1 -->|10.6.0.1| WG
+    ESP2 -->|10.6.0.2| WG
+    ESPX -->|10.6.0.N| WG
 
     %% Connexions du serveur WireGuard vers les instances Tailscale
     WG --> TS1
@@ -56,13 +56,13 @@ graph LR
     WG --> TSX
 
     %% Connexions des instances Tailscale vers Tailnet
-    TS1 <--> TAILNET
-    TS2 <--> TAILNET
-    TSX <--> TAILNET
+    TS1 <-->|100.a.b.c| TAILNET
+    TS2 <-->|100.d.e.f| TAILNET
+    TSX <-->|100.g.h.i| TAILNET
 
     %% Connexions des clients vers Tailnet
-    TAILNET <--> CLIENTA 
-    TAILNET <--> CLIENTB
+    TAILNET <-->|100.j.k.l| CLIENTA 
+    TAILNET <-->|100.m.n.o| CLIENTB
 ```
 
 The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VPS, Ubuntu 22.04) that:
