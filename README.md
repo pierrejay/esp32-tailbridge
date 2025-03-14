@@ -56,13 +56,13 @@ graph LR
     WG --> TSX
 
     %% Connexions des instances Tailscale vers Tailnet
-    TS1 <-->|100.a.b.c| TAILNET
-    TS2 <-->|100.d.e.f| TAILNET
-    TSX <-->|100.g.h.i| TAILNET
+    TS1 <-->|100.83.127.46| TAILNET
+    TS2 <-->|100.102.215.78| TAILNET
+    TSX <-->|100.95.168.39| TAILNET
 
     %% Connexions des clients vers Tailnet
-    TAILNET <-->|100.j.k.l| CLIENTA 
-    TAILNET <-->|100.m.n.o| CLIENTB
+    TAILNET <-->|100.76.204.153| CLIENTA 
+    TAILNET <-->|100.118.92.211| CLIENTB
 ```
 
 The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VPS, Ubuntu 22.04) that:
