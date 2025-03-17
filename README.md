@@ -66,7 +66,7 @@ graph LR
     TAILNET <-->|100.118.92.211| CLIENTB
 ```
 
-The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VPS, Ubuntu 22.04) that:
+The solution uses a Linux proxy server that:
 
 1. Runs a WireGuard server that ESP32s connect to
 2. Creates isolated network namespaces for each ESP32
@@ -74,6 +74,8 @@ The solution uses a low-cost Linux proxy server (tested on Oracle & OVH Cloud VP
 4. Routes traffic between WireGuard and Tailscale interfaces
 
 This approach makes each ESP32 appear as a distinct machine in your Tailnet (unlike the solution using `--advertise-routes`), with its own IP address.
+
+This machine can be a low-cost Linux VPS (tested on Oracle & OVH Cloud VPS w/ Ubuntu 22.04) or even a Raspberry Pi / home server, as long as it's exposing the WireGuard port to the outside world + has a fixed IP or hostname.
 
 ### Key Components
 
