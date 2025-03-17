@@ -90,7 +90,9 @@ This approach makes each ESP32 appear as a distinct machine in your Tailnet (unl
 - **Scalability**: 
   - 30+ ESP32 devices on the smallest servers (1~5 €/month)
   - Easy to scale across multiple servers: proxies are transparent to other Tailscale devices
-- **Transparency**: Other machines in your Tailnet see the ESP32 devices as direct Tailscale nodes
+- **Transparency**: 
+  - Other machines in your Tailnet see the ESP32 devices as direct Tailscale nodes. 
+  - The Tailscale configuration in each namespace is totally independent & only relies on the auth key provided during commissioning, which means it can even expose Tailscale routes without having access to their host account. There's no dependency on the server's Tailscale login, so a single proxy could theoretically serve ESP32 devices across multiple users/organizations using their respective auth keys.
 - **Firewall-friendly**: Works through NAT and restrictive firewalls
 - **Low overhead**: Minimal resource requirements on the ESP32
 
