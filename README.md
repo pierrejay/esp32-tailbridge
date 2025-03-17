@@ -90,7 +90,7 @@ This machine can be a low-cost Linux VPS (tested on Oracle & OVH Cloud VPS w/ Ub
 
 - **Security**: Both WireGuard and Tailscale are well-established secure protocols
 - **Scalability**: 
-  - 30+ ESP32 devices on the smallest servers (1~5 €/month)
+  - 30+ ESP32 devices on the smallest servers (~5 €/month)
   - Easy to scale across multiple servers: proxies are transparent to other Tailscale devices
 - **Transparency**: 
   - Other machines in your Tailnet see the ESP32 devices as direct Tailscale nodes. 
@@ -226,7 +226,7 @@ sudo ip netns exec esp1 tailscale --socket=/var/run/tailscale-esp1.sock status
 
 ## Scaling Considerations
 
-- **Single Server Scaling**: A small VPS can typically handle 30-50 ESP32 devices
+- **Single Server Scaling**: A small VPS can typically handle 40+ ESP32 devices w/ 4 GB RAM since each Tailscale instance eats up around 80 MB of RAM
 - **Multiple Server Scaling**: The architecture is inherently distributed
 - **Resource Requirements**:
   - Each namespace adds minimal overhead
