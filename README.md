@@ -115,7 +115,7 @@ An additional script `wireguard-monitor.py` is only used for tests. When reconne
 
 ### ESP32 Test Code
 
-The ESP32 side uses a WireGuard client library adapted from ESPHome [implementation](https://github.com/esphome/esphome/tree/dev/esphome/components/wireguard) & [library](https://github.com/droscy/esp_wireguard). The example implementation includes:
+The example implementation includes:
 
 - WireGuard connection management
 - Basic HTTP server for testing
@@ -124,9 +124,9 @@ The ESP32 side uses a WireGuard client library adapted from ESPHome [implementat
 ```cpp
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include <EspWireGuard.h>
+#include <ESP32-WireGuard.h>
 
-static EspWireGuard wg;
+static WireGuard wg;
 
 // Configuration parameters
 static const IPAddress WG_LOCAL_IP("10.6.0.2");
@@ -199,6 +199,8 @@ sudo ./setup-esp32.sh <esp_name>
    - Endpoint public key
 3. Compile and upload the code to your ESP32
 4. Let it connect to the WireGuard server and handle requests from other Tailscale nodes
+
+Note: in case you want the default network interface to be used for  outbound requests from the ESP, add the `WIREGUARD_KEEP_DEFAULT_NETIF` flag (e.g. to the platformio.ini file or in `ESP32-WireGuard.h`). 
 
 ## How It Works
 

@@ -133,9 +133,11 @@ bool WireGuard::begin(const IPAddress& localIP, const IPAddress& Subnet, const I
 		// Save the current default interface for restoring when shutting down the WG interface.
 		previous_default_netif = netif_default;
 		// Set default interface to WG device.
-        WG_MUTEX_LOCK();
-        netif_set_default(wg_netif);
-        WG_MUTEX_UNLOCK();
+		#ifndef WIREGUARD_KEEP_DEFAULT_NETIF
+		WG_MUTEX_LOCK();
+		netif_set_default(wg_netif);
+		WG_MUTEX_UNLOCK();
+		#endif
 	}
 
 	this->_is_initialized = true;
@@ -154,7 +156,9 @@ void WireGuard::end() {
 	if( !this->_is_initialized ) return;
 
 	// Restore the default interface.
+	#ifndef WIREGUARD_KEEP_DEFAULT_NETIF
 	netif_set_default(previous_default_netif);
+	#endif
 	previous_default_netif = nullptr;
 	// Disconnect the WG interface.
 	wireguardif_disconnect(wg_netif, wireguard_peer_index);
