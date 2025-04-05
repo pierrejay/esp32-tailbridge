@@ -76,6 +76,7 @@ void setup() {
   #endif
 
   #ifdef WG_USE_WIFI
+    WiFi.setSleep(WIFI_PS_NONE); // Disable WiFi sleep mode for better latency
     WiFi.begin("SSID", "PASSWORD");
     while (WiFi.status() != WL_CONNECTED) {
       delay(1000);

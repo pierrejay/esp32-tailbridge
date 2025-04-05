@@ -81,6 +81,8 @@ bool EspWireGuard::begin(const IPAddress& localIP, const IPAddress& subnet, cons
     _is_initialized = true;
 
     // Create the monitoring task - ADD THIS CODE AT THE END
+    // Deprecated for now (the WG library looks to be handling reconnection fine by itself)
+    //
     // xTaskCreate(
     //     MonitorTask,
     //     "WG_Monitor",
