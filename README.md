@@ -133,9 +133,18 @@ sudo sysctl -w net.ipv4.ip_forward=1
 # To make it permanent, add in /etc/sysctl.conf: net.ipv4.ip_forward = 1
 ```
 
-4. Accept the advertised routes in the Tailscale admin console (https://login.tailscale.com/admin/machines)
+4. Make sure the WireGuard port is accessible from the outside
+```bash
+# If you have a firewall (like UFW), allow UDP port 51820
+sudo ufw allow 51820/udp
 
-5. Configure packet forwarding between Tailscale and WireGuard interfaces
+# If you're behind NAT, ensure port 51820 is forwarded to this server
+# This is typically done in your router's configuration
+```
+
+5. Accept the advertised routes in the Tailscale admin console (https://login.tailscale.com/admin/machines)
+
+6. Configure packet forwarding between Tailscale and WireGuard interfaces
 ```bash
 # Enable IP forwarding between interfaces
 iptables -A FORWARD -i tailscale0 -o wg0 -j ACCEPT
@@ -182,7 +191,7 @@ iptables -A FORWARD -i wg0 -o tailscale0 -p icmp -j ACCEPT
 netfilter-persistent save
 ```
 
-6. Verify routing is working by pinging an ESP32 device from another Tailscale node
+7. Verify routing is working by pinging an ESP32 device from another Tailscale node. You can also use the `sudo wg show` command to check if a handshake happened on the WireGuard link.
 
 ### ESP32 Configuration
 
@@ -418,7 +427,15 @@ void loop() {
 ### Server Setup (Complex Method)
 
 1. Clone the repository to your server
-2. Run the setup script for each ESP32 device:
+2. Make sure the WireGuard port is accessible from the outside
+```bash
+# If you have a firewall (like UFW), allow UDP port 51820
+sudo ufw allow 51820/udp
+
+# If you're behind NAT, ensure port 51820 is forwarded to this server
+# This is typically done in your router's configuration
+```
+3. Run the setup script for each ESP32 device:
 
 ```bash
 sudo ./setup-esp32.sh <esp_name>
@@ -439,7 +456,7 @@ sudo ./setup-esp32.sh <esp_name>
 3. Compile and upload the code to your ESP32
 4. Let it connect to the WireGuard server and handle requests from other Tailscale nodes
 
-Note: in case you want the default network interface to be used for outbound requests from the ESP, add the `WIREGUARD_KEEP_DEFAULT_NETIF` flag (e.g. to the platformio.ini file or in `ESP32-WireGuard.h`). 
+Note: in case you want the default network interface (non-VPN) to be used for outbound requests from the ESP, use the `WIREGUARD_KEEP_DEFAULT_NETIF` flag (e.g. to the platformio.ini file or in `ESP32-WireGuard.h`). 
 
 ## How It Works (Complex Method)
 
@@ -542,7 +559,7 @@ Example for forwarding TCP port 8080:
 ip netns exec $NS_NAME iptables -t nat -A PREROUTING -i tailscale-netns -p tcp --dport 8080 -j DNAT --to-destination $ESP_IP:8080
 ```
 
-## Choosing Between Simple and Complex Methods
+## Choosing between the simple and complex methods
 
 ### When to use the Simple Method
 
@@ -558,15 +575,11 @@ ip netns exec $NS_NAME iptables -t nat -A PREROUTING -i tailscale-netns -p tcp -
 - **You need fine-grained access control**: Tailscale ACLs can be applied to individual ESP32 devices
 - **You want to scale to many devices**: Better isolation and management for large deployments
 
-## A Note About the Complex Method & Help Wanted!
+## A Note about the "complex method" (multiple Tailscale instances)
 
-Just a heads up — I built the complex method as a fun weekend project, and while it works, it's definitely not production-ready yet. It doesn't survive server reboots (oops!), and you'll need to manually restart everything if your server goes down.
+Just a heads up — I built the complex method as a fun weekend project, and while it works, it's definitely not production-ready yet. It doesn't survive server reboots, and you'll need to manually restart everything if your server goes down. Also worth noting: this works great with the official Tailscale service, but I've had some trouble getting it to play nicely with custom Headscale setups. I'm not sure exactly why, and honestly don't have the time to spend hours debugging it so I suggest the "simple method" that will work reliably in this case even if it's less flexible.
 
-Also worth noting: this works great with the official Tailscale service, but I've had some trouble getting it to play nicely with custom Headscale setups. I'm not sure exactly why, and honestly don't have the time to spend hours debugging it. If anyone figures out the Headscale compatibility issues, I'd love to hear about it!
-
-If you're actually using this and find it useful, I'd love some help making it more robust! The core idea works great, but it needs some love to become something you'd actually want to run in production. If you're interested in adding systemd services, better error handling, or just general improvements — please jump in! I'd be super grateful for any contributions.
-
-This was mostly a "let's see if this works" kind of project that turned out to be pretty handy, but could be so much better with a few more hands on deck.
+If you're actually using this and find it useful, I'd love some help making it more robust! The core idea works great, but it needs some work to become something you'd actually want to run in production. If you're interested, please jump in! I'd be super grateful for any contributions. This was mostly a "let's see if this works" kind of project that turned out to be pretty handy, but could be so much better with a few more hands on deck.
 
 ## Conclusion
 
