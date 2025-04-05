@@ -17,6 +17,20 @@ However, for IoT applications, we often need to:
 - Maintain secure connections
 - Give each device a unique, stable IP address
 
+## ESP32 WireGuard library
+
+The ESP32 side uses a WireGuard client library adapted from ESPHome [implementation](https://github.com/esphome/esphome/tree/dev/esphome/components/wireguard) & [library](https://github.com/droscy/esp_wireguard). 
+
+It requires a few flags to be defined (here in the `platformio.ini` file) for the connection to work properly:
+```ini
+build_flags = 
+  -DCONFIG_WIREGUARD_MAX_SRC_IPS=4
+  -DCONFIG_WIREGUARD_MAX_PEERS=1
+```
+By default, the library keeps the default network interface which will still be useable for incoming and outgoing requests while the WireGuard connection is established.
+This library requires ESP32 Arduino Core 3.0+: [pioarduino](https://github.com/pioarduino/platform-espressif32)
+
+
 ## Solution Architecture
 
 This project offers two different approaches to solve this problem:
