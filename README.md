@@ -124,7 +124,7 @@ curl -fsSL https://tailscale.com/install.sh | sh
 
 2. Start Tailscale with route advertisement
 ```bash
-tailscale up --advertise-routes=10.6.0.0/24 --accept-routes
+sudo tailscale up --advertise-routes=10.6.0.0/24
 ```
 
 3. Enable IP forwarding
@@ -147,48 +147,48 @@ sudo ufw allow 51820/udp
 6. Configure packet forwarding between Tailscale and WireGuard interfaces
 ```bash
 # Enable IP forwarding between interfaces
-iptables -A FORWARD -i tailscale0 -o wg0 -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -j ACCEPT
 
 # Set up masquerading to handle the routing correctly
-iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
-iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+sudo iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
 
 # Make these rules persistent (requires iptables-persistent)
-apt-get install -y iptables-persistent
-netfilter-persistent save
+sudo apt-get install -y iptables-persistent
+sudo netfilter-persistent save
 ```
 
 If you want to precisely control which ports are accessible on which ESP32 devices, you can use more restrictive iptables rules. The default configuration above allows all traffic, but you can be more selective:
 
 ```bash
 # Remove generic FORWARD rules (if they already exist)
-iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT
-iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT
+sudo iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT
+sudo iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT
 
 # Allow only port 80 (HTTP) to ESP32 #1 (10.6.0.2)
-iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.2 -p tcp --dport 80 -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.2 -p tcp --sport 80 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.2 -p tcp --dport 80 -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.2 -p tcp --sport 80 -j ACCEPT
 
 # Allow only ports 80 and 8080 to ESP32 #2 (10.6.0.3)
-iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 80 -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 80 -j ACCEPT
-iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 8080 -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 8080 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 80 -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 80 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 8080 -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 8080 -j ACCEPT
 
 # Allow MQTT protocol (port 1883) to ESP32 #3 (10.6.0.4)
-iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.4 -p tcp --dport 1883 -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.4 -p tcp --sport 1883 -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.4 -p tcp --dport 1883 -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.4 -p tcp --sport 1883 -j ACCEPT
 
 # Allow ping (ICMP) to all ESP32 devices
-iptables -A FORWARD -i tailscale0 -o wg0 -p icmp -j ACCEPT
-iptables -A FORWARD -i wg0 -o tailscale0 -p icmp -j ACCEPT
+sudo iptables -A FORWARD -i tailscale0 -o wg0 -p icmp -j ACCEPT
+sudo iptables -A FORWARD -i wg0 -o tailscale0 -p icmp -j ACCEPT
 
 # Block everything else by default (if your default policy isn't DROP)
-# iptables -A FORWARD -i tailscale0 -o wg0 -j DROP
+# sudo iptables -A FORWARD -i tailscale0 -o wg0 -j DROP
 
 # Make these rules persistent
-netfilter-persistent save
+sudo netfilter-persistent save
 ```
 
 7. Verify routing is working by pinging an ESP32 device from another Tailscale node. You can also use the `sudo wg show` command to check if a handshake happened on the WireGuard link.
