@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include <WireGuard-ESP32.h>
+#include <EspWireGuard.h>
 
-static WireGuard wg;
+static EspWireGuard wg;
 
 // Chose which interface to use
 // #define WG_USE_WIFI
