@@ -272,7 +272,7 @@ graph LR
     %% Serveur Proxy hébergeant les instances Tailscale
     subgraph PROXY [WG+TS Proxy Server]
       direction TB
-      WG(WireGuard)<br>10.6.0.1/24
+      WG(WireGuard<br>10.6.0.1/24)
       TS1(Tailscale #1)
       TS2(Tailscale #2)
       TSX(Tailscale #N)
