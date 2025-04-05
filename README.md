@@ -111,8 +111,7 @@ EOF
 
 4. Start WireGuard
 ```bash
-systemctl enable wg-quick@wg0
-systemctl start wg-quick@wg0
+sudo wg-quick up wg0
 ```
 
 #### Tailscale Configuration
@@ -129,27 +128,76 @@ tailscale up --advertise-routes=10.6.0.0/24 --accept-routes
 
 3. Enable IP forwarding
 ```bash
-echo 'net.ipv4.ip_forward = 1' > /etc/sysctl.d/99-tailscale.conf
-sysctl -p /etc/sysctl.d/99-tailscale.conf
+sudo sysctl -w net.ipv4.ip_forward=1
+# To make it permanent, add in /etc/sysctl.conf: net.ipv4.ip_forward = 1
 ```
 
 4. Accept the advertised routes in the Tailscale admin console (https://login.tailscale.com/admin/machines)
 
+5. Configure packet forwarding between Tailscale and WireGuard interfaces
+```bash
+# Enable IP forwarding between interfaces
+iptables -A FORWARD -i tailscale0 -o wg0 -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -j ACCEPT
+
+# Set up masquerading to handle the routing correctly
+iptables -t nat -A POSTROUTING -o wg0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -o tailscale0 -j MASQUERADE
+
+# Make these rules persistent (requires iptables-persistent)
+apt-get install -y iptables-persistent
+netfilter-persistent save
+```
+
+If you want to precisely control which ports are accessible on which ESP32 devices, you can use more restrictive iptables rules. The default configuration above allows all traffic, but you can be more selective:
+
+```bash
+# Remove generic FORWARD rules (if they already exist)
+iptables -D FORWARD -i tailscale0 -o wg0 -j ACCEPT
+iptables -D FORWARD -i wg0 -o tailscale0 -j ACCEPT
+
+# Allow only port 80 (HTTP) to ESP32 #1 (10.6.0.2)
+iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.2 -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.2 -p tcp --sport 80 -j ACCEPT
+
+# Allow only ports 80 and 8080 to ESP32 #2 (10.6.0.3)
+iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 80 -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 80 -j ACCEPT
+iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.3 -p tcp --dport 8080 -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.3 -p tcp --sport 8080 -j ACCEPT
+
+# Allow MQTT protocol (port 1883) to ESP32 #3 (10.6.0.4)
+iptables -A FORWARD -i tailscale0 -o wg0 -d 10.6.0.4 -p tcp --dport 1883 -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -s 10.6.0.4 -p tcp --sport 1883 -j ACCEPT
+
+# Allow ping (ICMP) to all ESP32 devices
+iptables -A FORWARD -i tailscale0 -o wg0 -p icmp -j ACCEPT
+iptables -A FORWARD -i wg0 -o tailscale0 -p icmp -j ACCEPT
+
+# Block everything else by default (if your default policy isn't DROP)
+# iptables -A FORWARD -i tailscale0 -o wg0 -j DROP
+
+# Make these rules persistent
+netfilter-persistent save
+```
+
+6. Verify routing is working by pinging an ESP32 device from another Tailscale node
+
 ### ESP32 Configuration
 
-Similar to the complex approach, the ESP32 connects to the WireGuard server:
+Similar to the other method, the ESP32 connects to the WireGuard server:
 
 ```cpp
 #include <Arduino.h>
 #include <ESPAsyncWebServer.h>
-#include <EspWireGuard.h>
+#include <ESP32-WireGuard.h>
 
-static EspWireGuard wg;
+static WireGuard wg;
 
 // Configuration parameters
 static const IPAddress WG_LOCAL_IP("10.6.0.2");
-static const IPAddress WG_SUBNET("255.255.255.0");
-static const IPAddress WG_GATEWAY("10.6.0.1");
+static const IPAddress WG_SUBNET("255.255.255.255");
+static const IPAddress WG_GATEWAY("192.168.0.1");
 static const char* WG_PRIVATE_KEY = "PRIVATE_KEY_HERE";
 static const char* WG_ENDPOINT_ADDRESS = "YOUR_SERVER_IP";
 static const char* WG_ENDPOINT_PUBLIC_KEY = "PUBLIC_KEY_HERE";
