@@ -30,6 +30,7 @@ This project offers two different approaches to solve this problem:
 
 This approach uses a single Tailscale instance on the proxy server that advertises routes to the WireGuard subnet where ESP32 devices reside.
 
+*Tailscale IP addresses are not real, just for illustration*
 ```mermaid
 graph LR
     %% ESP32 devices grouping
@@ -44,7 +45,7 @@ graph LR
     subgraph PROXY [WG+TS Proxy Server]
       direction TB
       WG(WireGuard<br>10.6.0.1/24)
-      TS(Tailscale<br>100.x.y.z)
+      TS(Tailscale<br>100.83.127.46)
     end
 
     %% Tailnet central node
@@ -66,8 +67,8 @@ graph LR
     TS <-->|advertise-routes=10.6.0.0/24| TAILNET
 
     %% Client connections to Tailnet
-    TAILNET <--> CLIENTA 
-    TAILNET <--> CLIENTB
+    TAILNET <--> |100.76.204.153| CLIENTA 
+    TAILNET <--> |100.118.92.211| CLIENTB
 ```
 
 ### Key Characteristics
@@ -271,7 +272,7 @@ graph LR
     %% Serveur Proxy hébergeant les instances Tailscale
     subgraph PROXY [WG+TS Proxy Server]
       direction TB
-      WG(WireGuard)
+      WG(WireGuard)<br>10.6.0.1/24
       TS1(Tailscale #1)
       TS2(Tailscale #2)
       TSX(Tailscale #N)
