@@ -33,7 +33,13 @@ This library requires ESP32 Arduino Core 3.0+: [pioarduino](https://github.com/p
 
 ## Solution Architecture
 
-This project offers two different approaches to solve this problem:
+This project uses a Linux server acting as a proxy between the ESP32 devices and the Tailscale network. It should be exposed from where the ESP32s are located (or at least the WireGuard port), preferably with a fixed IP/hostname. If you are connecting the ESP32s within the same LAN as the proxy and plan to access them from the outside, you don't even need to setup NAT on your router as Tailscale handles NAT traversal (but in that case & if it's a private network such as home network, using WireGuard is probably overkill...).
+
+The machine can be a low-cost Linux VPS or even a Raspberry Pi / home server. It doesn't need to be powerful, but can require quite some amount of RAM if you are planning to use the version with isolated Tailscale instances (see below) as each one will need around 80MB of RAM to work properly.
+
+The following scripts were tested on Oracle & OVH Cloud entry-level VPS (Ubuntu 22.04 & 24.04, 1GB RAM, 1 vCPU) as well as a Raspberry Pi 3B+ (RPi OS 64-bit). They use `apt` commands to install the required packages so the scripts should work on any Debian-based system.
+
+I describe two different approaches to solve this problem:
 
 1. **Simple Method**: A single Tailscale instance on the proxy server with advertised routes to the WireGuard subnet
 2. **Complex Method**: Multiple isolated Tailscale instances (one per ESP32) in separate network namespaces
@@ -337,8 +343,6 @@ The solution uses a Linux proxy server that:
 
 This approach makes each ESP32 appear as a distinct machine in your Tailnet (unlike the simple solution using `--advertise-routes`), with its own IP address.
 
-This machine can be a low-cost Linux VPS (tested on Oracle & OVH Cloud VPS w/ Ubuntu 22.04) or even a Raspberry Pi / home server, as long as it's exposing the WireGuard port to the outside world + has a fixed IP or hostname.
-
 ### Key Components
 
 - **ESP32 Side**: Uses a WireGuard client library to connect to the proxy server
@@ -502,7 +506,7 @@ sudo ip netns exec esp1 tailscale --socket=/var/run/tailscale-esp1.sock status
 - **Multiple Server Scaling**: The architecture is inherently distributed
 - **Resource Requirements**:
   - Each namespace adds minimal overhead
-  - Main limitation is typically network bandwidth, not CPU or memory
+  - Main limitation is typically network bandwidth, not CPU or memory (but can be a problem if you're adding a lot of isolated instances with the 2nd method).
 
 ## Troubleshooting
 
